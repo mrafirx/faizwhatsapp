@@ -1,0 +1,41 @@
+# https://hub.docker.com/repository/docker/comp1531/automarking/general
+image: comp1531/automarking:latest
+
+stages:
+  - checks
+
+before_script:
+  - npm install
+
+testing:
+  stage: checks
+  script:
+    - SERVER_LOG=$(mktemp)
+
+    # Start server in background and capture output in temp file
+    - npm start &> $SERVER_LOG & pid=$!
+    - sleep 2
+    - ps -o pid | egrep -q "^\s*${pid}$" || (cat $SERVER_LOG && exit 1)
+
+    # Run test then kill server
+    - npm test || (cat $SERVER_LOG && exit 1)
+    - sleep 1
+    - kill -SIGINT %1
+
+    - cat $SERVER_LOG
+  only:
+    - master
+
+type checking:
+  stage: checks
+  script:
+    - npm run tsc
+  only:
+    - master
+
+linting:
+  stage: checks
+  script:
+    - npm run lint
+  only:
+    - master
